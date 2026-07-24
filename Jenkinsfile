@@ -22,10 +22,14 @@ pipeline {
         }
 
         stage('Build') {
-            steps {
-                sh 'npm run build'
-            }
-        }
+       steps {
+        sh '''
+        rm -rf .next
+        npm install
+        npm run build
+        '''
+    }
+}
 
         stage('Verify Export') {
             steps {
