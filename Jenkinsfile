@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = 'my-portfolio'
-        APP_PORT = '3000'
+        WEBSITE_DIR = "/var/www/html"
+        BACKUP_DIR  = "/var/www/backup"
     }
 
     stages {
@@ -27,17 +27,27 @@ pipeline {
             }
         }
 
+        stage('Verify Export') {
+            steps {
+                sh '''
+                if [ ! -d "out" ]; then
+                    echo "ERROR: out directory not found."
+                    echo "Please make sure next.config.js contains:"
+                    echo "output: 'export'"
+                    exit 1
+                fi
+                '''
+            }
+        }
+
         stage('Backup Current Website') {
             steps {
                 sh '''
-                BACKUP_DIR=/var/www/backup
-                TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                mkdir -p ${BACKUP_DIR}
 
-                mkdir -p $BACKUP_DIR
-
-                if [ -d "/var/www/html" ] && [ "$(ls -A /var/www/html 2>/dev/null)" ]; then
-                    tar -czf $BACKUP_DIR/website_$TIMESTAMP.tar.gz -C /var/www html
-                    echo "Backup created: $BACKUP_DIR/website_$TIMESTAMP.tar.gz"
+                if [ -d "${WEBSITE_DIR}" ] && [ "$(ls -A ${WEBSITE_DIR} 2>/dev/null)" ]; then
+                    tar -czf ${BACKUP_DIR}/backup_$(date +%Y%m%d_%H%M%S).tar.gz ${WEBSITE_DIR}
+                    echo "Backup created successfully."
                 else
                     echo "No existing website found. Skipping backup."
                 fi
@@ -45,19 +55,13 @@ pipeline {
             }
         }
 
-        stage('Stop Old Application') {
+        stage('Deploy Website') {
             steps {
                 sh '''
-                pm2 delete ${APP_NAME} || true
-                '''
-            }
-        }
-
-        stage('Start Application') {
-            steps {
-                sh '''
-                pm2 start npm --name ${APP_NAME} -- start
-                pm2 save
+                sudo rm -rf ${WEBSITE_DIR}/*
+                sudo cp -r out/* ${WEBSITE_DIR}/
+                sudo chown -R www-data:www-data ${WEBSITE_DIR}
+                sudo chmod -R 755 ${WEBSITE_DIR}
                 '''
             }
         }
@@ -73,8 +77,8 @@ pipeline {
         stage('Health Check') {
             steps {
                 sh '''
-                sleep 10
-                curl -I http://localhost:${APP_PORT}
+                sleep 5
+                curl -I http://localhost
                 '''
             }
         }
@@ -82,11 +86,15 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment Successful.'
+            echo "===================================="
+            echo "Deployment Successful"
+            echo "===================================="
         }
 
         failure {
-            echo 'Deployment Failed.'
+            echo "===================================="
+            echo "Deployment Failed"
+            echo "===================================="
         }
     }
 }
