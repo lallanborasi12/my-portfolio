@@ -60,15 +60,8 @@ pipeline {
         }
 
         stage('Deploy Website') {
-            steps {
-                sh '''
-                sudo rm -rf ${WEBSITE_DIR}/*
-                sudo cp -r out/* ${WEBSITE_DIR}/
-                sudo chown -R www-data:www-data ${WEBSITE_DIR}
-                sudo chmod -R 755 ${WEBSITE_DIR}
-                '''
-            }
-        }
+    ...
+}
 
         stage('Restart Apache') {
             steps {
