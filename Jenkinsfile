@@ -32,7 +32,7 @@ pipeline {
         stage('Backup') {
             steps {
                 sh '''
-                sudo mkdir -p ${BACKUP_DIR}
+                 mkdir -p ${BACKUP_DIR}
 
                 if [ -d "${DEPLOY_DIR}" ]; then
                     TIMESTAMP=$(date +%F-%H-%M-%S)
@@ -45,10 +45,10 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
-                sudo rm -rf ${DEPLOY_DIR}
-                sudo mkdir -p ${DEPLOY_DIR}
+                 rm -rf ${DEPLOY_DIR}
+                 mkdir -p ${DEPLOY_DIR}
 
-                sudo rsync -av --delete \
+                 rsync -av --delete \
                     --exclude='.git' \
                     --exclude='Jenkinsfile' \
                     ./ ${DEPLOY_DIR}/
