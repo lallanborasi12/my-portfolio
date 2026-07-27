@@ -2,7 +2,9 @@ pipeline {
     agent any
 
     environment {
-        APP_DIR = "/var/www/my-portfolio"
+        APP_NAME   = "my-portfolio"
+        DEPLOY_DIR = "/var/www/html/my-portfolio"
+        BACKUP_DIR = "/var/www/backup"
     }
 
     stages {
@@ -27,11 +29,41 @@ pipeline {
             }
         }
 
+        stage('Backup') {
+            steps {
+                sh '''
+                sudo mkdir -p ${BACKUP_DIR}
+
+                if [ -d "${DEPLOY_DIR}" ]; then
+                    TIMESTAMP=$(date +%F-%H-%M-%S)
+                    sudo cp -r ${DEPLOY_DIR} ${BACKUP_DIR}/${APP_NAME}-${TIMESTAMP}
+                fi
+                '''
+            }
+        }
+
         stage('Deploy') {
             steps {
                 sh '''
-                pm2 delete my-portfolio || true
-                pm2 start npm --name my-portfolio -- start
+                sudo rm -rf ${DEPLOY_DIR}
+                sudo mkdir -p ${DEPLOY_DIR}
+
+                sudo rsync -av --delete \
+                    --exclude='.git' \
+                    --exclude='Jenkinsfile' \
+                    ./ ${DEPLOY_DIR}/
+
+                cd ${DEPLOY_DIR}
+
+                npm install --production
+
+                pm2 delete ${APP_NAME} || true
+                pm2 start npm \
+                    --name ${APP_NAME} \
+                    --cwd ${DEPLOY_DIR} \
+                    -- start
+
+                pm2 save
                 '''
             }
         }
